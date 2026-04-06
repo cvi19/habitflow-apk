@@ -61,21 +61,14 @@ jobs:
           mkdir -p ~/.buildozer/android/platform
           yes | pip install --upgrade buildozer || true
 
-        - name: Accept licenses
-  run: |
-    mkdir -p ~/.buildozer/android/platform/android-sdk/licenses
-    echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
-          
-      
+     
       - name: Build APK
         run: |
           export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
           buildozer android debug
         env:
           ANDROID_SDK_ROOT: ~/.buildozer/android/platform/android-sdk
-          env:
-  GRADLE_OPTS: "-Xmx2048m -Dorg.gradle.jvmargs=-Xmx2048m"
-
+          GRADLE_OPTS: "-Xmx2048m -Dorg.gradle.jvmargs=-Xmx2048m"
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
@@ -87,4 +80,3 @@ jobs:
         run: |
           echo "✅ Build complete!"
           ls -lh bin/*.apk
-          
