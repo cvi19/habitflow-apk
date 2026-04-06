@@ -21,110 +21,64 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            openjdk-17-jdk \
-            build-essential \
-            git \
-            zip \
-            unzip \
-            wget \
-            curl \
-            autoconf \
-            libtool \
-            pkg-config \
-            zlib1g-dev \
-            libssl-dev \
-            libffi-dev \
-            libsqlite3-dev \
-            libncurses5-dev \
-            libncursesw5-dev \
-            ccache
+          sudo apt-get install -y openjdk-17-jdk build-essential git zip unzip wget autoconf libtool pkg-config zlib1g-dev libssl-dev libffi-dev libsqlite3-dev libncurses5-dev libncursesw5-dev ccache python3-dev
 
       - name: Set JAVA_HOME
         run: |
           echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> $GITHUB_ENV
           echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
 
-      - name: Install Android SDK command-line tools manually
-        run: |
-          # Create SDK directory
-          mkdir -p $HOME/android-sdk/cmdline-tools
-
-          # Download the latest Android command-line tools
-          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O /tmp/cmdline-tools.zip
-
-          # Extract into the correct folder structure
-          unzip -q /tmp/cmdline-tools.zip -d /tmp/cmdline-tools-extracted
-          mv /tmp/cmdline-tools-extracted/cmdline-tools $HOME/android-sdk/cmdline-tools/latest
-
-          # Export paths
-          echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
-          echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
-          echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
-          echo "$HOME/android-sdk/platform-tools" >> $GITHUB_PATH
-
-      - name: Accept Android SDK licenses
-        run: |
-          export ANDROID_SDK_ROOT=$HOME/android-sdk
-          export PATH=$HOME/android-sdk/cmdline-tools/latest/bin:$PATH
-
-          # Accept all licenses
-          yes | sdkmanager --licenses || true
-
-          # Install required SDK packages
-          sdkmanager --install \
-            "platform-tools" \
-            "platforms;android-33" \
-            "build-tools;33.0.2" \
-            "ndk;25.2.9519653"
-
-      - name: Install Python dependencies
+      - name: Install Python build tools
         run: |
           pip install --upgrade pip
           pip install buildozer==1.5.0
           pip install cython==0.29.33
 
+      - name: Setup Android SDK in buildozer path
+        run: |
+          BSDK=$HOME/.buildozer/android/platform/android-sdk
+          mkdir -p $BSDK/cmdline-tools
+          mkdir -p $BSDK/tools/bin
+          mkdir -p $BSDK/licenses
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O /tmp/ct.zip
+          unzip -q /tmp/ct.zip -d /tmp/ct
+          mv /tmp/ct/cmdline-tools $BSDK/cmdline-tools/latest
+          echo "#!/bin/bash" > $BSDK/tools/bin/sdkmanager
+          echo 'exec "'$BSDK'/cmdline-tools/latest/bin/sdkmanager" "$@"' >> $BSDK/tools/bin/sdkmanager
+          chmod +x $BSDK/tools/bin/sdkmanager
+          echo "#!/bin/bash" > $BSDK/tools/bin/avdmanager
+          echo 'exec "'$BSDK'/cmdline-tools/latest/bin/avdmanager" "$@"' >> $BSDK/tools/bin/avdmanager
+          chmod +x $BSDK/tools/bin/avdmanager
+          echo "ANDROID_SDK_ROOT=$BSDK" >> $GITHUB_ENV
+          echo "ANDROID_HOME=$BSDK" >> $GITHUB_ENV
+          echo "$BSDK/cmdline-tools/latest/bin" >> $GITHUB_PATH
+          echo "$BSDK/tools/bin" >> $GITHUB_PATH
+          echo "$BSDK/platform-tools" >> $GITHUB_PATH
+
+      - name: Accept licenses and install SDK packages
+        run: |
+          BSDK=$HOME/.buildozer/android/platform/android-sdk
+          printf "24333f8a63b6825ea9c5514f83c2829b004d1fee\nd56f5187479451eabf01fb78af6dfcb131a6481e\n84831b9409646a918e30573bab4c9c91346d8abd\n" > $BSDK/licenses/android-sdk-license
+          printf "d975f751698a77b662f1254ddbeed3901e976f5a\n84831b9409646a918e30573bab4c9c91346d8abd\n" > $BSDK/licenses/android-sdk-preview-license
+          $BSDK/cmdline-tools/latest/bin/sdkmanager --sdk_root=$BSDK "platform-tools" "platforms;android-33" "build-tools;33.0.2" "ndk;25.2.9519653"
+
       - name: Cache Buildozer directory
         uses: actions/cache@v4
         with:
           path: ~/.buildozer
-          key: buildozer-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}-v2
-          restore-keys: |
-            buildozer-${{ runner.os }}-
-
-      - name: Configure Buildozer to use existing Android SDK
-        run: |
-          # Tell buildozer to use the SDK we already installed
-          mkdir -p ~/.buildozer/android/platform
-          ln -sf $HOME/android-sdk ~/.buildozer/android/platform/android-sdk || true
-
-          # Set buildozer config to skip SDK download
-          cat >> buildozer.spec << 'EOF'
-
-          # Point to pre-installed SDK
-          android.sdk_path = /home/runner/android-sdk
-          android.ndk_path = /home/runner/android-sdk/ndk/25.2.9519653
-          EOF
+          key: buildozer-${{ runner.os }}-v7
+          restore-keys: buildozer-${{ runner.os }}-
 
       - name: Build APK
         run: |
           export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
-          export ANDROID_SDK_ROOT=$HOME/android-sdk
-          export ANDROID_HOME=$HOME/android-sdk
-          export PATH=$HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools:$PATH
-
-          # Run buildozer
+          BSDK=$HOME/.buildozer/android/platform/android-sdk
+          export ANDROID_SDK_ROOT=$BSDK
+          export ANDROID_HOME=$BSDK
+          export PATH=$BSDK/cmdline-tools/latest/bin:$BSDK/tools/bin:$BSDK/platform-tools:$PATH
+          echo "sdkmanager version:" && $BSDK/tools/bin/sdkmanager --version
           buildozer -v android debug 2>&1 | tee build.log
-
-          # Check if APK was created
-          if ls bin/*.apk 1>/dev/null 2>&1; then
-            echo "✅ APK built successfully!"
-            ls -lh bin/*.apk
-          else
-            echo "❌ APK not found. Last 50 lines of build log:"
-            tail -50 build.log
-            exit 1
-          fi
+          ls bin/*.apk && echo "APK built successfully!" || (tail -80 build.log && exit 1)
         env:
           GRADLE_OPTS: "-Xmx2560m -Dorg.gradle.jvmargs=-Xmx2560m"
 
@@ -135,7 +89,7 @@ jobs:
           path: bin/*.apk
           retention-days: 30
 
-      - name: Upload build log (on failure)
+      - name: Upload build log on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
