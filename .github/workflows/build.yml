@@ -11,7 +11,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -49,7 +49,7 @@ jobs:
           pip install cython==0.29.33
 
       - name: Cache Buildozer global directory
-        uses: actions/cache@v4
+        uses: actions/cache@v3
         with:
           path: ~/.buildozer
           key: buildozer-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
@@ -61,16 +61,15 @@ jobs:
           mkdir -p ~/.buildozer/android/platform
           yes | pip install --upgrade buildozer || true
 
-     
       - name: Build APK
         run: |
           export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
           buildozer android debug
         env:
           ANDROID_SDK_ROOT: ~/.buildozer/android/platform/android-sdk
-          GRADLE_OPTS: "-Xmx2048m -Dorg.gradle.jvmargs=-Xmx2048m"
+
       - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: HabitFlow-APK
           path: bin/*.apk
