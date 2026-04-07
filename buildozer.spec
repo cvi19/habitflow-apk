@@ -8,8 +8,8 @@ version         = 1.0.0
 
 # ── Source ───────────────────────────────────────────────────
 source.dir      = .
-source.include_exts     = py,png,jpg,kv,atlas,html,json,js
-source.include_patterns = assets/*
+source.include_exts = py,png,jpg,kv,atlas,html,json,js,css
+source.include_patterns = *.html,*.js,*.css,*.json
 
 # ── Requirements ─────────────────────────────────────────────
 # jnius lets Python call Android Java APIs (WebView etc.)
@@ -32,10 +32,6 @@ android.permissions = \
 
 # Hardware acceleration (required for smooth WebView)
 android.manifest.application_attributes = android:hardwareAccelerated="true"
-
-# Allow cleartext for local file:// loading
-android.add_aars             =
-android.gradle_dependencies  =
 
 # Accept SDK license
 android.accept_sdk_license   = True
