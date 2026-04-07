@@ -13,6 +13,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Verify buildozer.spec exists
+        run: |
+          pwd
+          ls -la buildozer.spec
+          if [ -f buildozer.spec ]; then
+            echo "✓ buildozer.spec found!"
+          else
+            echo "✗ buildozer.spec NOT found!"
+            exit 1
+          fi
+
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
@@ -21,7 +32,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y openjdk-17-jdk build-essential git zip unzip wget autoconf libtool pkg-config zlib1g-dev libssl-dev libffi-dev libsqlite3-dev libncurses5-dev libncursesw5-dev ccache python3-dev
+          sudo apt-get install -y openjdk-17-jdk build-essential git zip unzip wget autoconf libtool pkg-config zlib1g-dev libssl-dev libffi-dev libsqlite3-dev libncurses5-dev libncursesw5-dev ccache cmake python3-dev || exit 1
 
       - name: Set JAVA_HOME
         run: |
@@ -68,6 +79,13 @@ jobs:
           path: ~/.buildozer
           key: buildozer-${{ runner.os }}-v7
           restore-keys: buildozer-${{ runner.os }}-
+
+      - name: Clear buildozer cache for fresh download
+        run: |
+          echo "Clearing old buildozer cache to prevent stale dependencies..."
+          rm -rf ~/.buildozer/android/packages
+          rm -rf ~/.buildozer/android/platform/build-arm64-v8a
+          echo "Cache cleared. Fresh build will be performed."
 
       - name: Build APK
         run: |
