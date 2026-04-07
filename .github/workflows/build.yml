@@ -32,8 +32,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y openjdk-17-jdk build-essential git zip unzip wget autoconf libtool pkg-config zlib1g-dev libssl-dev libffi-dev libsqlite3-dev libncurses5-dev libncursesw5-dev ccache cmake python3-dev || exit 1
-
+                    sudo apt-get install -y openjdk-17-jdk build-essential git zip unzip wget autoconf libtool pkg-config zlib1g-dev libssl-dev libffi-dev libsqlite3-dev libncurses5-dev libncursesw5-dev ccache cmake python3-dev || exit 1
       - name: Set JAVA_HOME
         run: |
           echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> $GITHUB_ENV
@@ -87,7 +86,7 @@ jobs:
           rm -rf ~/.buildozer/android/platform/build-arm64-v8a
           echo "Cache cleared. Fresh build will be performed."
 
-      - name: Build APK
+           - name: Build APK with retry logic
         run: |
           export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
           BSDK=$HOME/.buildozer/android/platform/android-sdk
@@ -95,11 +94,24 @@ jobs:
           export ANDROID_HOME=$BSDK
           export PATH=$BSDK/cmdline-tools/latest/bin:$BSDK/tools/bin:$BSDK/platform-tools:$PATH
           echo "sdkmanager version:" && $BSDK/tools/bin/sdkmanager --version
-          buildozer -v android debug 2>&1 | tee build.log
-          ls bin/*.apk && echo "APK built successfully!" || (tail -80 build.log && exit 1)
+          
+          # Retry up to 3 times to handle transient network errors
+          for attempt in 1 2 3; do
+            echo "=========================================="
+            echo "Build attempt $attempt/3..."
+            echo "=========================================="
+            buildozer -v android debug 2>&1 | tee build.log && break
+            if [ $attempt -lt 3 ]; then
+              echo "Build failed, waiting 60 seconds before retry..."
+              sleep 60
+              echo "Clearing problematic build directories for next attempt..."
+              rm -rf ~/.buildozer/android/platform/build-arm64-v8a
+            fi
+          done
+          
+          ls bin/*.apk && echo "APK built successfully!" || (tail -100 build.log && exit 1)
         env:
           GRADLE_OPTS: "-Xmx2560m -Dorg.gradle.jvmargs=-Xmx2560m"
-
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
