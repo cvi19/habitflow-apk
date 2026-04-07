@@ -36,6 +36,12 @@ android.manifest.application_attributes = android:hardwareAccelerated="true"
 # Accept SDK license
 android.accept_sdk_license   = True
 
+# Gradle configuration to handle download issues
+android.gradle_options = org.gradle.jvmargs=-Xmx2560m
+
+# Use gradle wrapper instead of default gradle
+android.gradle_wrapper = True
+
 # Log level for build output
 log_level = 2
 warn_on_root = 1
@@ -43,3 +49,7 @@ warn_on_root = 1
 [buildozer]
 log_level = 2
 warn_on_root = 1
+
+[p4a]
+# Use alternative gradle mirror to avoid download failures
+gradle_url = https://services.gradle.org/distributions/gradle-8.0-all.zip
